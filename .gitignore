@@ -1,0 +1,20 @@
+# Java / SpringBoot
+backend/target/
+*.jar
+*.war
+
+# Angular / Node
+frontend/node_modules/
+frontend/dist/
+
+# Python / Agente IA
+ai-agent/__pycache__/
+ai-agent/venv/
+ai-agent/.env
+
+# Variables de entorno y sistemas operativos
+.env
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
