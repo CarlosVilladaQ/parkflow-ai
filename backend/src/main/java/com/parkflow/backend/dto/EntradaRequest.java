@@ -8,6 +8,6 @@ public record EntradaRequest(
         String placa,
 
         @NotBlank(message = "El tipo de vehículo es obligatorio")
-        @Pattern(regexp = "CARRO|MOTO", message = "El tipo debe ser CARRO o MOTO")
-        String tipoVehiculo
+        @Pattern(regexp = "(?i)(CARRO|MOTO)", message = "El tipo debe ser CARRO o MOTO")
+        String tipoVehiculo,
 ) {}

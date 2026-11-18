@@ -41,4 +41,14 @@ public class ParqueaderoController {
     public ResponseEntity<List<TicketResponse>> listarVehiculosActivos() {
         return ResponseEntity.ok(parqueaderoService.listarActivos());
     }
+    @GetMapping("/tarifas/{tipoVehiculo}")
+    public ResponseEntity<com.parkflow.backend.dto.TarifaResponse> obtenerTarifa(@PathVariable String tipoVehiculo) {
+        return ResponseEntity.ok(parqueaderoService.consultarTarifa(tipoVehiculo));
+    }
+
+    @PostMapping("/reservas")
+    public ResponseEntity<com.parkflow.backend.model.Reserva> crearReserva(@Valid @RequestBody com.parkflow.backend.dto.ReservaRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(parqueaderoService.crearReserva(request));
+    }
+
 }

@@ -138,4 +138,34 @@ public class ParqueaderoService {
                 t.getEstado()
         );
     }
+        public com.parkflow.backend.dto.TarifaResponse consultarTarifa(String tipoVehiculo) {
+        String tipo = tipoVehiculo.trim().toUpperCase();
+        Tarifa tarifa = tarifaRepo.findByTipoVehiculoAndActivoTrue(tipo)
+                .orElseThrow(() -> new IllegalArgumentException("No existe tarifa activa para: " + tipo));
+        return new com.parkflow.backend.dto.TarifaResponse(
+                tarifa.getTipoVehiculo(),
+                tarifa.getValorHora(),
+                tarifa.getValorFraccion(),
+                tarifa.getValorDia()
+        );
+    }
+
+    @Transactional
+    public com.parkflow.backend.model.Reserva crearReserva(com.parkflow.backend.dto.ReservaRequest request) {
+        String tipo = request.tipoVehiculo().trim().toUpperCase();
+        DisponibilidadResponse disp = consultarDisponibilidad(tipo);
+        if (disp.cuposDisponibles() <= 0) {
+            throw new IllegalStateException("No hay cupos disponibles para reservar en este momento para " + tipo);
+        }
+
+        com.parkflow.backend.model.Reserva reserva = new com.parkflow.backend.model.Reserva();
+        reserva.setPlaca(request.placa().trim().toUpperCase());
+        reserva.setTipoVehiculo(tipo);
+        reserva.setClienteTelefono(request.clienteTelefono().trim());
+        reserva.setFechaHoraInicio(OffsetDateTime.now(ZONA_COLOMBIA));
+        reserva.setEstado("CONFIRMADA");
+
+        return reservaRepo.save(reserva);
+    }
+
 }
