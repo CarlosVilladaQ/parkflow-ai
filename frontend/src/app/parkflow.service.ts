@@ -34,7 +34,11 @@ export class ParkflowService {
     return this.http.get<Ticket[]>(`${this.backendUrl}/activos`);
   }
 
-  registrarEntrada(placa: string, tipoVehiculo: string): Observable<Ticket> {
+  listarHistorial(): Observable<Ticket[]> {
+    return this.http.get<Ticket[]>(`${this.backendUrl}/historial`);
+  }
+
+  registrarEntrada(placa: string, tipoVehiculo?: string): Observable<Ticket> {
     return this.http.post<Ticket>(`${this.backendUrl}/entradas`, { placa, tipoVehiculo });
   }
 

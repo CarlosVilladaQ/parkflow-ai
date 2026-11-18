@@ -2,8 +2,11 @@ package com.parkflow.backend.service;
 
 import com.parkflow.backend.dto.DisponibilidadResponse;
 import com.parkflow.backend.dto.EntradaRequest;
+import com.parkflow.backend.dto.ReservaRequest;
+import com.parkflow.backend.dto.TarifaResponse;
 import com.parkflow.backend.dto.TicketResponse;
 import com.parkflow.backend.model.ConfiguracionParqueadero;
+import com.parkflow.backend.model.Reserva;
 import com.parkflow.backend.model.Tarifa;
 import com.parkflow.backend.model.Ticket;
 import com.parkflow.backend.repository.ConfiguracionRepository;
@@ -53,10 +56,29 @@ public class ParqueaderoService {
         return new DisponibilidadResponse(tipo, totales, ocupados, reservados, disponibles);
     }
 
+    public String detectarTipoPorPlaca(String placa) {
+        String p = placa.trim().toUpperCase();
+        // Si termina en letra -> MOTO (ej. BUI41C)
+        if (p.matches(".*[A-Z]$")) {
+            return "MOTO";
+        }
+        // Si tiene letras seguidas de exactamente 2 dígitos al final -> MOTO (ej. ABC12)
+        if (p.matches("^[A-Z]{2,3}\\d{2}$")) {
+            return "MOTO";
+        }
+        // Si termina en 3 números -> CARRO (ej. ABC123)
+        if (p.matches(".*\\d{3}$")) {
+            return "CARRO";
+        }
+        throw new IllegalArgumentException("Formato de placa no válido: " + p + ". Ejemplos: ABC123 (Carro) o BUI41C / ABC12 (Moto)");
+    }
+
     @Transactional
     public TicketResponse registrarEntrada(EntradaRequest request) {
         String placaNormalizada = request.placa().trim().toUpperCase();
-        String tipo = request.tipoVehiculo().toUpperCase();
+        String tipo = (request.tipoVehiculo() != null && !request.tipoVehiculo().isBlank())
+                ? request.tipoVehiculo().trim().toUpperCase()
+                : detectarTipoPorPlaca(placaNormalizada);
 
         if (ticketRepo.findByPlacaAndEstado(placaNormalizada, "ACTIVO").isPresent()) {
             throw new IllegalArgumentException("El vehículo con placa " + placaNormalizada + " ya se encuentra dentro del parqueadero.");
@@ -127,6 +149,13 @@ public class ParqueaderoService {
                 .toList();
     }
 
+    public List<TicketResponse> listarHistorialSalidas() {
+        return ticketRepo.findByEstadoOrderByHoraSalidaDesc("PAGADO")
+                .stream()
+                .map(this::mapearTicket)
+                .toList();
+    }
+
     private TicketResponse mapearTicket(Ticket t) {
         return new TicketResponse(
                 t.getId(),
@@ -138,11 +167,12 @@ public class ParqueaderoService {
                 t.getEstado()
         );
     }
-        public com.parkflow.backend.dto.TarifaResponse consultarTarifa(String tipoVehiculo) {
+
+    public TarifaResponse consultarTarifa(String tipoVehiculo) {
         String tipo = tipoVehiculo.trim().toUpperCase();
         Tarifa tarifa = tarifaRepo.findByTipoVehiculoAndActivoTrue(tipo)
                 .orElseThrow(() -> new IllegalArgumentException("No existe tarifa activa para: " + tipo));
-        return new com.parkflow.backend.dto.TarifaResponse(
+        return new TarifaResponse(
                 tarifa.getTipoVehiculo(),
                 tarifa.getValorHora(),
                 tarifa.getValorFraccion(),
@@ -151,14 +181,14 @@ public class ParqueaderoService {
     }
 
     @Transactional
-    public com.parkflow.backend.model.Reserva crearReserva(com.parkflow.backend.dto.ReservaRequest request) {
+    public Reserva crearReserva(ReservaRequest request) {
         String tipo = request.tipoVehiculo().trim().toUpperCase();
         DisponibilidadResponse disp = consultarDisponibilidad(tipo);
         if (disp.cuposDisponibles() <= 0) {
             throw new IllegalStateException("No hay cupos disponibles para reservar en este momento para " + tipo);
         }
 
-        com.parkflow.backend.model.Reserva reserva = new com.parkflow.backend.model.Reserva();
+        Reserva reserva = new Reserva();
         reserva.setPlaca(request.placa().trim().toUpperCase());
         reserva.setTipoVehiculo(tipo);
         reserva.setClienteTelefono(request.clienteTelefono().trim());
@@ -167,5 +197,4 @@ public class ParqueaderoService {
 
         return reservaRepo.save(reserva);
     }
-
 }

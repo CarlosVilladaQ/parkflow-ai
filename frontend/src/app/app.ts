@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ParkflowService, Disponibilidad, Ticket } from './parkflow.service';
@@ -16,12 +16,26 @@ export class App implements OnInit {
   dispCarros = signal<Disponibilidad | null>(null);
   dispMotos = signal<Disponibilidad | null>(null);
   ticketsActivos = signal<Ticket[]>([]);
+  historialSalidas = signal<Ticket[]>([]);
 
-  nuevaPlaca = '';
-  nuevoTipo = 'CARRO';
+  // Calcula automáticamente el total de dinero ingresado en caja
+  totalCaja = computed(() =>
+    this.historialSalidas().reduce((suma, t) => suma + (t.totalPagado || 0), 0)
+  );
+
+  nuevaPlaca = signal('');
   alertaOperacion = signal('');
   errorOperacion = signal('');
   registrandoEntrada = signal(false);
+
+  // Vista previa en vivo del tipo detectado según la placa colombiana
+  tipoDetectado = computed(() => {
+    const p = this.nuevaPlaca().trim().toUpperCase();
+    if (p.length < 4) return null;
+    if (/[A-Z]$/.test(p) || /^[A-Z]{2,3}\d{2}$/.test(p)) return 'MOTO';
+    if (/\d{3}$/.test(p)) return 'CARRO';
+    return null;
+  });
 
   mensajeUsuario = '';
   cargandoChat = signal(false);
@@ -37,18 +51,19 @@ export class App implements OnInit {
     this.parkflow.obtenerDisponibilidad('CARRO').subscribe(d => this.dispCarros.set(d));
     this.parkflow.obtenerDisponibilidad('MOTO').subscribe(d => this.dispMotos.set(d));
     this.parkflow.listarActivos().subscribe(t => this.ticketsActivos.set(t));
+    this.parkflow.listarHistorial().subscribe(h => this.historialSalidas.set(h));
   }
 
   ingresarVehiculo(): void {
-    if (!this.nuevaPlaca.trim() || this.registrandoEntrada()) return;
+    if (!this.nuevaPlaca().trim() || this.registrandoEntrada()) return;
     this.registrandoEntrada.set(true);
     this.errorOperacion.set('');
     this.alertaOperacion.set('');
 
-    this.parkflow.registrarEntrada(this.nuevaPlaca, this.nuevoTipo).subscribe({
+    this.parkflow.registrarEntrada(this.nuevaPlaca()).subscribe({
       next: (ticket) => {
         this.alertaOperacion.set(`Ingreso registrado: ${ticket.placa} (${ticket.tipoVehiculo})`);
-        this.nuevaPlaca = '';
+        this.nuevaPlaca.set('');
         this.registrandoEntrada.set(false);
         this.recargarDatos();
       },

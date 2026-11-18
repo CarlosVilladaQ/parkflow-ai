@@ -41,6 +41,12 @@ public class ParqueaderoController {
     public ResponseEntity<List<TicketResponse>> listarVehiculosActivos() {
         return ResponseEntity.ok(parqueaderoService.listarActivos());
     }
+
+    @GetMapping("/historial")
+    public ResponseEntity<List<TicketResponse>> listarHistorialSalidas() {
+        return ResponseEntity.ok(parqueaderoService.listarHistorialSalidas());
+    }
+
     @GetMapping("/tarifas/{tipoVehiculo}")
     public ResponseEntity<com.parkflow.backend.dto.TarifaResponse> obtenerTarifa(@PathVariable String tipoVehiculo) {
         return ResponseEntity.ok(parqueaderoService.consultarTarifa(tipoVehiculo));

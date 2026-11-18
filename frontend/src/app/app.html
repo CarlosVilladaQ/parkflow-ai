@@ -4,7 +4,7 @@
     <span class="badge">Control Operativo + Agente Inteligente</span>
   </header>
 
-  <!-- Tarjetas de Disponibilidad en Tiempo Real -->
+  <!-- Tarjetas de Disponibilidad y Flujo de Caja -->
   <section class="cards">
     <div class="card" *ngIf="dispCarros() as carros">
       <h3>Carros</h3>
@@ -17,6 +17,12 @@
       <p class="numero">{{ motos.cuposDisponibles }} <span>/ {{ motos.cuposTotales }} libres</span></p>
       <small>Adentro: {{ motos.cuposOcupados }} | Reservados IA: {{ motos.cuposReservados }}</small>
     </div>
+
+    <div class="card card-caja">
+      <h3>Flujo de Caja (Ingresos)</h3>
+      <p class="numero caja-monto">${{ totalCaja() | number:'1.0-0' }} <span>COP</span></p>
+      <small>{{ historialSalidas().length }} salidas liquidadas</small>
+    </div>
   </section>
 
   <div class="main-grid">
@@ -25,12 +31,17 @@
       <h2>Control de Entradas y Salidas</h2>
 
       <form (ngSubmit)="ingresarVehiculo()" class="form-ingreso">
-        <input type="text" [(ngModel)]="nuevaPlaca" name="placa" placeholder="Placa (ej. ABC123)" maxlength="8" required />
-        <select [(ngModel)]="nuevoTipo" name="tipo">
-          <option value="CARRO">Carro</option>
-          <option value="MOTO">Moto</option>
-        </select>
-        <button type="submit">Registrar Entrada</button>
+        <input
+          type="text"
+          [ngModel]="nuevaPlaca()"
+          (ngModelChange)="nuevaPlaca.set($event)"
+          name="placa"
+          placeholder="Escribe placa (ej. ABC123 o BUI41C)"
+          maxlength="8"
+          required
+        />
+        <span class="tag-tipo" *ngIf="tipoDetectado() as tipo">{{ tipo }}</span>
+        <button type="submit" [disabled]="registrandoEntrada()">Registrar Entrada</button>
       </form>
 
       <p class="msg-ok" *ngIf="alertaOperacion()">{{ alertaOperacion() }}</p>
@@ -42,7 +53,7 @@
           <tr>
             <th>Placa</th>
             <th>Tipo</th>
-            <th>Hora Entrada</th>
+            <th>Entrada</th>
             <th>Acción</th>
           </tr>
         </thead>
@@ -57,6 +68,31 @@
       </table>
       <ng-template #sinVehiculos>
         <p class="vacio">No hay vehículos estacionados en este momento.</p>
+      </ng-template>
+
+      <h3 class="subtitulo-historial">Historial de Salidas y Recaudo ({{ historialSalidas().length }})</h3>
+      <table class="tabla" *ngIf="historialSalidas().length > 0; else sinHistorial">
+        <thead>
+          <tr>
+            <th>Placa</th>
+            <th>Tipo</th>
+            <th>Entrada</th>
+            <th>Salida</th>
+            <th>Cobrado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let h of historialSalidas()">
+            <td><strong>{{ h.placa }}</strong></td>
+            <td>{{ h.tipoVehiculo }}</td>
+            <td>{{ h.horaEntrada | date:'shortTime' }}</td>
+            <td>{{ h.horaSalida | date:'shortTime' }}</td>
+            <td class="monto-pagado">${{ h.totalPagado | number:'1.0-0' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <ng-template #sinHistorial>
+        <p class="vacio">Aún no se han liquidado salidas hoy.</p>
       </ng-template>
     </section>
 
