@@ -1,0 +1,80 @@
+<div class="container">
+  <header class="header">
+    <h1>ParkFlow AI</h1>
+    <span class="badge">Control Operativo + Agente Inteligente</span>
+  </header>
+
+  <!-- Tarjetas de Disponibilidad en Tiempo Real -->
+  <section class="cards">
+    <div class="card" *ngIf="dispCarros() as carros">
+      <h3>Carros</h3>
+      <p class="numero">{{ carros.cuposDisponibles }} <span>/ {{ carros.cuposTotales }} libres</span></p>
+      <small>Adentro: {{ carros.cuposOcupados }} | Reservados IA: {{ carros.cuposReservados }}</small>
+    </div>
+
+    <div class="card" *ngIf="dispMotos() as motos">
+      <h3>Motos</h3>
+      <p class="numero">{{ motos.cuposDisponibles }} <span>/ {{ motos.cuposTotales }} libres</span></p>
+      <small>Adentro: {{ motos.cuposOcupados }} | Reservados IA: {{ motos.cuposReservados }}</small>
+    </div>
+  </section>
+
+  <div class="main-grid">
+    <!-- Columna Izquierda: Operación del Parqueadero -->
+    <section class="panel">
+      <h2>Control de Entradas y Salidas</h2>
+
+      <form (ngSubmit)="ingresarVehiculo()" class="form-ingreso">
+        <input type="text" [(ngModel)]="nuevaPlaca" name="placa" placeholder="Placa (ej. ABC123)" maxlength="8" required />
+        <select [(ngModel)]="nuevoTipo" name="tipo">
+          <option value="CARRO">Carro</option>
+          <option value="MOTO">Moto</option>
+        </select>
+        <button type="submit">Registrar Entrada</button>
+      </form>
+
+      <p class="msg-ok" *ngIf="alertaOperacion()">{{ alertaOperacion() }}</p>
+      <p class="msg-err" *ngIf="errorOperacion()">{{ errorOperacion() }}</p>
+
+      <h3>Vehículos en Parqueadero ({{ ticketsActivos().length }})</h3>
+      <table class="tabla" *ngIf="ticketsActivos().length > 0; else sinVehiculos">
+        <thead>
+          <tr>
+            <th>Placa</th>
+            <th>Tipo</th>
+            <th>Hora Entrada</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let t of ticketsActivos()">
+            <td><strong>{{ t.placa }}</strong></td>
+            <td>{{ t.tipoVehiculo }}</td>
+            <td>{{ t.horaEntrada | date:'shortTime' }}</td>
+            <td><button class="btn-salida" (click)="darSalida(t.placa)">Liquidar Salida</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <ng-template #sinVehiculos>
+        <p class="vacio">No hay vehículos estacionados en este momento.</p>
+      </ng-template>
+    </section>
+
+    <!-- Columna Derecha: Agente Conversacional de IA -->
+    <section class="panel chat-panel">
+      <h2>Asistente Virtual IA (Reservas y Tarifas)</h2>
+      <div class="chat-box">
+        <div *ngFor="let m of mensajesChat()" [ngClass]="m.emisor === 'usuario' ? 'msg-user' : 'msg-bot'">
+          <strong>{{ m.emisor === 'usuario' ? 'Tú' : 'ParkFlow AI' }}:</strong>
+          <p>{{ m.texto }}</p>
+        </div>
+        <div class="msg-bot" *ngIf="cargandoChat()"><em>Consultando base de datos...</em></div>
+      </div>
+
+      <form (ngSubmit)="enviarChat()" class="chat-input">
+        <input type="text" [(ngModel)]="mensajeUsuario" name="chat" placeholder="Ej. ¿Cuánto vale la hora de moto?" />
+        <button type="submit" [disabled]="cargandoChat()">Enviar</button>
+      </form>
+    </section>
+  </div>
+</div>

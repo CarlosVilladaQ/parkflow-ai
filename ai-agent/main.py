@@ -59,35 +59,44 @@ REGLAS ESTRICTAS (GUARDRAILS):
 5. Mantén tus respuestas breves, amables y profesionales.
 """
 
+class MensajeHistorial(BaseModel):
+    emisor: str
+    texto: str
+
 class ChatRequest(BaseModel):
     mensaje: str
-
-@app.get("/api/modelos")
-def listar_modelos():
-    return [m.name for m in client.models.list() if "flash" in m.name]
-
+    historial: list[MensajeHistorial] = []
 
 @app.post("/api/chat")
 def conversar_con_agente(req: ChatRequest):
-    modelos_fallback = ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite", "gemini-3.5-flash"]
+    modelos_fallback = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.5-flash"]
     ultimo_error = ""
+
+    # Construimos el contexto con los últimos mensajes para que el agente tenga memoria
+    contexto_conversacion = ""
+    for item in req.historial[-6:]:
+        rol = "Cliente" if item.emisor == "usuario" else "Asistente"
+        contexto_conversacion += f"{rol}: {item.texto}\n"
+    prompt_completo = f"{contexto_conversacion}Cliente: {req.mensaje}"
 
     for modelo in modelos_fallback:
         try:
             response = client.models.generate_content(
                 model=modelo,
-                contents=req.mensaje,
+                contents=prompt_completo,
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_INSTRUCTION,
                     tools=[consultar_disponibilidad, consultar_tarifa, crear_reserva],
                     temperature=0.1,
                 ),
             )
-            return {"respuesta": response.text, "modelo_usado": modelo}
-        except Exception as e:
+            texto_final = response.text or "Listo, operación procesada correctamente."
+            return {"respuesta": texto_final, "modelo_usado": modelo}
+                except Exception as e:
             ultimo_error = str(e)
-            if "503" in ultimo_error or "UNAVAILABLE" in ultimo_error:
-                continue  # Si hay alta demanda, salta al siguiente modelo automáticamente
-            raise HTTPException(status_code=500, detail=ultimo_error)
+            if any(code in ultimo_error for code in ["503", "UNAVAILABLE", "429", "404", "NOT_FOUND"]):
+                continue
+            return {"respuesta": "Tuve un inconveniente temporal procesando tu solicitud. Por favor intenta de nuevo.", "modelo_usado": modelo}
 
-    raise HTTPException(status_code=503, detail=f"Todos los modelos están congestionados: {ultimo_error}")
+
+    return {"respuesta": "El servicio de IA tiene alta demanda en este instante. Por favor intenta en unos segundos.", "modelo_usado": "none"}
